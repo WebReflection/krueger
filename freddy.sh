@@ -28,10 +28,14 @@ krueger() {
       status)
         if [ "$(uname -s)" = "Linux" ]; then
           # check if sleeping is disabled
-          sudo systemctl is-enabled sleep.target suspend.target hibernate.target hybrid-sleep.target
+          if [ "$(sudo systemctl is-enabled sleep.target)" = "static" ]; then
+            echo 'disabled'
+          else
+            echo 'enabled'
+          fi
         else
           # check if sleeping is disabled
-          sudo pmset -g | grep "SleepDisabled"
+          sudo pmset -g | grep -E "SleepDisabled|disablesleep"
         fi
         return
     esac
@@ -39,9 +43,9 @@ krueger() {
 
   printf 'Usage: %s on|off|status\n\n' "$0" >&2
   printf 'Example:\n'
-  printf '  krueger on \x1b[2m# machine cannot sleep\x1b[0m\n'
-  printf '  krueger off \x1b[2m# machine can sleep\x1b[0m\n'
-  printf '  krueger status \x1b[2m# check if sleeping is disabled\x1b[0m\n'
+  printf '  krueger on      \x1b[2m# machine cannot sleep\x1b[0m\n'
+  printf '  krueger off     \x1b[2m# machine can sleep\x1b[0m\n'
+  printf '  krueger status  \x1b[2m# check krueger state\x1b[0m\n'
   return 1
 }
 
