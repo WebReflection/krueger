@@ -1,5 +1,7 @@
 #!/usr/bin/env sh
 
+git push && git push --tags
+
 if [ -d "krueger" ]; then
   cd krueger
 else
