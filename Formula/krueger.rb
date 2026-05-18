@@ -3,7 +3,7 @@ class Krueger < Formula
   homepage "https://github.com/WebReflection/krueger"
   url "https://github.com/WebReflection/krueger.git",
       tag:      "v0.1.0",
-      revision: "faab4d09553d9d7b353d3093b7210036d0f0c784"
+      revision: "e29aa94a213023da3cd3ab94749a9de1c2bda323"
   license "MIT"
 
   def install
