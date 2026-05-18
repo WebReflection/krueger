@@ -11,7 +11,7 @@ Right now there is an [AUR package](https://aur.archlinux.org/packages/krueger) 
 ```sh
 curl -LO https://raw.githubusercontent.com/WebReflection/krueger/refs/heads/main/freddy.sh
 chmod +x freddy.sh
-sudo mv freddy.sh /usr/local/bin/
+sudo mv freddy.sh /usr/local/bin/krueger
 ```
 
 Please **note** this [shell script](./freddy.sh) relies on *systemd*.
