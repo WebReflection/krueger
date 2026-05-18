@@ -1,0 +1,122 @@
+#!/usr/bin/env sh
+
+set -eu
+
+linux_only() {
+  if [ "$(uname -s)" != "Linux" ]; then
+    printf 'helper.sh only runs on Linux.\n' >&2
+    exit 1
+  fi
+}
+
+usage() {
+  printf 'Usage: %s sha256|homebrew <version>\n\n' "$0" >&2
+  printf 'Commands:\n' >&2
+  printf '  sha256              update freddy.sh sha256 in PKGBUILD\n' >&2
+  printf '  homebrew <version>  tag current HEAD, update Formula/krueger.rb, commit, and push\n\n' >&2
+  printf 'Examples:\n' >&2
+  printf '  %s sha256\n' "$0" >&2
+  printf '  %s homebrew 0.1.2\n' "$0" >&2
+  printf '  %s homebrew v0.1.2\n' "$0" >&2
+  exit 1
+}
+
+need() {
+  if ! command -v "$1" >/dev/null 2>&1; then
+    printf 'Missing required command: %s\n' "$1" >&2
+    exit 1
+  fi
+}
+
+repo_root() {
+  git rev-parse --show-toplevel
+}
+
+ensure_clean() {
+  if [ -n "$(git status --porcelain)" ]; then
+    printf 'Working tree must be clean before publishing.\n' >&2
+    git status --short >&2
+    exit 1
+  fi
+}
+
+update_sha256() {
+  need sha256sum
+  need sed
+
+  if [ ! -f freddy.sh ] || [ ! -f PKGBUILD ]; then
+    printf 'Expected freddy.sh and PKGBUILD in repository root.\n' >&2
+    exit 1
+  fi
+
+  sha256=$(sha256sum freddy.sh | sed 's/[[:space:]].*$//')
+  sed -i "0,/sha256sums=('[0-9a-f][0-9a-f]*/s//sha256sums=('$sha256/" PKGBUILD
+
+  printf 'Updated PKGBUILD freddy.sh sha256:\n%s\n' "$sha256"
+  echo 'Remember to ./publish' to AUR
+}
+
+publish_homebrew() {
+  if [ "$#" -ne 1 ]; then
+    usage
+  fi
+
+  need git
+  need sed
+  need ruby
+
+  version=$1
+  case "$version" in
+    v*) tag=$version ;;
+    *) tag="v$version" ;;
+  esac
+
+  if [ "$(git branch --show-current)" != "main" ]; then
+    printf 'Homebrew publish must run from main.\n' >&2
+    exit 1
+  fi
+
+  ensure_clean
+
+  if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+    printf 'Tag already exists locally: %s\n' "$tag" >&2
+    exit 1
+  fi
+
+  revision=$(git rev-parse HEAD)
+
+  git tag "$tag" "$revision"
+
+  sed -i "s/tag:      \"v[0-9][^\"]*\"/tag:      \"$tag\"/" Formula/krueger.rb
+  sed -i "s/revision: \"[0-9a-f][0-9a-f]*\"/revision: \"$revision\"/" Formula/krueger.rb
+
+  ruby -c Formula/krueger.rb >/dev/null
+
+  git add Formula/krueger.rb
+  git commit -m "Update Homebrew formula for $tag"
+  git push origin "$tag"
+  git push origin main
+
+  printf 'Published %s from %s and pushed formula update.\n' "$tag" "$revision"
+}
+
+linux_only
+
+cd "$(repo_root)"
+
+case "${1:-}" in
+  sha256)
+    shift
+    if [ "$#" -ne 0 ]; then
+      usage
+    fi
+    update_sha256
+    ;;
+  homebrew)
+    shift
+    publish_homebrew "$@"
+    ;;
+  *)
+    usage
+    ;;
+esac
